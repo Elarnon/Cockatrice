@@ -161,10 +161,142 @@ void TableZone::reorganizeCards()
     // Calculate card stack widths so mapping functions work properly
     computeCardStackWidths();
 
-    for (int i = 0; i < cards.size(); ++i) {
-        QPoint gridPoint = cards[i]->getGridPos();
-        if (gridPoint.x() == -1)
+    // Partition cards by row
+    QMap<int, QVector<CardItem *>> rows;
+    for (auto *card : cards) {
+        QPoint gridPoint = card->getGridPoint();
+
+        // Skip cards that have not yet been accepted by the server
+        if (gridPoint.x() < 0)
             continue;
+        
+        // TODO: Skip cards that are currently being dragged *into this same zone*
+
+        auto it = rows.find(gridPoint.y());
+        if (it != rows.end()) {
+            it->append(card);
+        } else {
+            rows.insert(gridPoint.y(), {card});
+        }
+    }
+
+    // Find where to add the drag items
+
+    // The amount of displaced pixels due to cards with attachments and/or card
+    // stacks being inserted.
+    qreal shiftOffset = 0.0;
+    for (auto it = row.begin(); it != row.end(); ) {
+        if (dragOffset < it.position() + shiftOffset) {
+            // Now we know that the dragged card needs to be inserted between
+            // `prev` and `it`. We need to figure out the exact position.
+
+            int numberAttachedCards = dragCard->getAttachedCards().size();
+            shiftOffset += numberAttachedCards * STACKED_CARD_OFFSET_X;
+
+            // TODO: Figure out the exact slot this would be added.
+            // If there is an empty slot, this is fine.
+            // If there is *no* empty slot, make space, which adds
+            // (CARD_WIDTH + PADDING_X) to the shiftOffset.
+
+            addBefore();
+        }
+    }
+
+    // TODO: add dragged cards to the appropriate rows
+    //  -> sort dragged cards within the row
+    int gridOffset = 0;
+    qreal xOffset = MARGIN_LEFT;
+    for (;;) {
+        QPoint gridPoint = it->gridPoint();
+        int gridX = gridPoint.x() + gridOffset;
+
+        // The current card starts at xOffset. Compute the offset for the start
+        // of the next card to compare it with the drag point.
+        qreal nextOffset = xOffset;
+
+        // Adjust the start of the current card in case there is a hole
+        if (gridX != lastX + 1) {
+            Q_ASSERT(gridX % 3 == 0);
+
+            nextOffset += (gridX - lastX) / 3 * (CARD_WIDTH + PADDING_X);
+
+            if (dragIt != dragEnd && dragOffset < nextOffset) {
+                // TODO: place the phantom drag in the big hole
+
+                dragIt++;
+                continue;
+            }
+        }
+
+        int numberAttachedCards = card->getAttachedCards().size();
+        nextOffset += numberAttachedCards * STACKED_CARD_OFFSET_X;
+
+        if (gridX % 3 == 2) {
+            nextOffset += CARD_WIDTH + PADDING_X;
+        } else {
+            nextOffset += STACKED_CARD_OFFSET_X;
+        }
+
+        if (dragIt != dragEnd && dragOffset < nextOffset) {
+            // Place the dragged card at the current position
+            xOffset += dragCard->getAttachedCards().size() * STACKED_CARD_OFFSET_X;
+
+            // TODO: setPos(xOffset)
+
+            // Update the position for the next card to be placed
+            gridOffset += 1;
+            if (gridX % 3 == 2) {
+                xOffset += CARD_WIDTH + PADDING_X;
+            } else {
+                xOffset += STACKED_CARD_OFFSET_X;
+            }
+
+            // Move to the next dragged card
+            dragIt++;
+        } else {
+            // Place the current card!
+        }
+    }
+
+    // TODO: sort all the rows, decreasing
+
+    // Iterate on the positions for all rows at once
+    int i = 0;
+    qreal xOffset = MARGIN_LEFT;
+    for (;;) {
+        for (auto it = rows.begin(); it != end; ) {
+            if (it->last().getGridPoint().x() > i) {
+                ++it;
+                continue;
+            }
+
+            Q_ASSERT(it->last().x() == i);
+            CardItem *card = it->takeLast();
+            QPoint gridPoint = card->getGridPoint();
+
+            if (gridPoint.x() % 3 == 0) {
+                // Adjust the position for the previous row
+                if (gridPoint.x() > 0)
+                    xOffset += CARD_WIDTH + PADDING_X - 2 * STACKED_CARD_OFFSET_X;
+            } else {
+                xOffset += STACKED_CARD_OFFSET_X;
+            }
+
+            // Adjust the position for attachments, if needed
+            int numberAttachedCards = card->getAttachedCards().size();
+            xOffset += numberAttachedCards * STACKED_CARD_OFFSET_X;
+
+            // TODO: set the position for attached cards
+
+            // TODO: set the position for the actual card
+
+            if (it->isEmpty()) {
+                it = rows.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
 
         QPointF mapPoint = mapFromGrid(gridPoint);
         qreal x = mapPoint.x();
@@ -209,6 +341,11 @@ void TableZone::reorganizeCards()
 
     resizeToContents();
     update();
+}
+
+void TableZone::performLayout()
+{
+    // TODO
 }
 
 void TableZone::toggleTapped()

@@ -30,12 +30,8 @@ void DeckViewCardDragItem::updatePosition(const QPointF &cursorScenePos)
         return;
     currentZone = cursorZone;
 
-    QPointF newPos = cursorScenePos;
-    if (newPos != pos()) {
-        for (int i = 0; i < childDrags.size(); i++)
-            childDrags[i]->setPos(newPos + childDrags[i]->getHotSpot());
-        setPos(newPos);
-    }
+    if (cursorScenePos != pos())
+        setPos(cursorScenePos);
 }
 
 void DeckViewCardDragItem::handleDrop(DeckViewCardContainer *target)

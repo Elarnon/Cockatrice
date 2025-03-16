@@ -46,6 +46,8 @@ public:
 
 protected:
     void mouseMoveEvent(QGraphicsSceneMouseEvent *event) override;
+
+    QVariant itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value) override;
 };
 
 #endif

@@ -70,8 +70,6 @@ void CardDragItem::updatePosition(const QPointF &cursorScenePos)
     QPointF newPos = zonePos + closestGridPoint;
 
     if (newPos != pos()) {
-        for (int i = 0; i < childDrags.size(); i++)
-            childDrags[i]->setPos(newPos + childDrags[i]->getHotSpot());
         setPos(newPos);
 
         bool newOccupied = false;

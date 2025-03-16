@@ -32,6 +32,7 @@ AbstractCardDragItem::AbstractCardDragItem(AbstractCardItem *_item,
                          .translate(-CARD_WIDTH_HALF, -CARD_HEIGHT_HALF));
 
     setCacheMode(DeviceCoordinateCache);
+    setFlag(ItemSendsScenePositionChanges);
 }
 
 AbstractCardDragItem::~AbstractCardDragItem()
@@ -64,4 +65,14 @@ void AbstractCardDragItem::mouseMoveEvent(QGraphicsSceneMouseEvent *event)
 void AbstractCardDragItem::addChildDrag(AbstractCardDragItem *child)
 {
     childDrags << child;
+}
+
+QVariant AbstractCardDragItem::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value)
+{
+    if (change == ItemScenePositionHasChanged && scene()) {
+        for (auto *childDrag : childDrags)
+            childDrag->setPos(scenePos() + childDrag->getHotSpot());
+    }
+
+    return QGraphicsItem::itemChange(change, value);
 }
